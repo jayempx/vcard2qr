@@ -10,6 +10,7 @@ Dependencies (install with pip):
 Author: ChatGPT (OpenAI o3)
 Date: 2025‑08‑06
 """
+#!/usr/bin/env python
 
 import sys
 from typing import List, Tuple

@@ -1,5 +1,7 @@
 # vcard2qr
 
+WARNING: this a vibe-coded repo made with Codex.
+
 Simple PyQt5 desktop app that collects your contact details, builds a vCard 3.0 payload, and renders it as a customizable QR code you can preview, copy or export as PNG called **vcard2qr**.
 
 ## Features
