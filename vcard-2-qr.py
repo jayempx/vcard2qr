@@ -1,5 +1,5 @@
 """
-VCard QR Generator GUI
+vcard2qr GUI
 ===========================================
 A PyQt5 application that lets you fill out contact information, generate a
 vCard 3.0 payload, and render it as a customizable QR code.
@@ -43,7 +43,7 @@ class VCardQRApp(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("vCard QR Generator")
+        self.setWindowTitle("vcard2qr")
 
         # ---------- Form fields ----------
         self.fields = {
