@@ -32,6 +32,7 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QCheckBox,
+    QFrame,
 )
 
 import qrcode
@@ -63,9 +64,12 @@ class VCardQRApp(QWidget):
 
         # ---------- Layout scaffolding ----------
         root = QHBoxLayout(self)
+        root.setSpacing(28)
+        root.setContentsMargins(24, 24, 24, 24)
 
         # -- Left‑hand scrollable form
         form_container = QWidget()
+        form_container.setObjectName("formContainer")
         self.form_layout = QFormLayout(form_container)
         for label, widget in self.fields.items():
             self.form_layout.addRow(label, widget)
@@ -77,10 +81,16 @@ class VCardQRApp(QWidget):
         scroll = QScrollArea()
         scroll.setWidget(form_container)
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
         root.addWidget(scroll, stretch=2)
 
         # -- Right‑hand controls & preview
         ctrl_col = QVBoxLayout()
+        ctrl_col.setSpacing(14)
+        ctrl_frame = QFrame()
+        ctrl_frame.setObjectName("controlPanel")
+        ctrl_frame.setLayout(ctrl_col)
+        ctrl_frame.setFrameShape(QFrame.NoFrame)
 
         # Size selector
         ctrl_col.addWidget(QLabel("Size (px):"))
@@ -105,7 +115,7 @@ class VCardQRApp(QWidget):
         self.bg_btn.clicked.connect(self.pick_bg_color)
         ctrl_col.addWidget(self.bg_btn)
 
-        self.transparent_checkbox = QCheckBox("Sfondo trasparente")
+        self.transparent_checkbox = QCheckBox("No background (transparent)")
         self.transparent_checkbox.toggled.connect(self.toggle_transparent_background)
         ctrl_col.addWidget(self.transparent_checkbox)
 
@@ -129,9 +139,10 @@ class VCardQRApp(QWidget):
         self.qr_label.setMinimumSize(256, 256)
         ctrl_col.addWidget(self.qr_label, stretch=2)
 
-        root.addLayout(ctrl_col, stretch=1)
+        root.addWidget(ctrl_frame, stretch=1)
 
         self.current_qr: Image.Image | None = None
+        self.apply_material_theme()
 
     # ---------------------------------------------------------------------
     # Utility helpers
@@ -156,6 +167,55 @@ class VCardQRApp(QWidget):
         """Toggle whether the QR background should be transparent."""
         self.transparent_bg = checked
         self.bg_btn.setEnabled(not checked)
+
+    def apply_material_theme(self) -> None:
+        """Apply Material Design 3-inspired styling to the UI."""
+        self.setStyleSheet(
+            """
+            QWidget {
+                background-color: #f4f6fb;
+                font-family: "Segoe UI", "Roboto", sans-serif;
+                color: #1f2933;
+            }
+            #formContainer, #controlPanel {
+                background-color: #ffffff;
+                border-radius: 18px;
+                border: 1px solid rgba(15, 23, 42, 0.1);
+                padding: 18px;
+            }
+            #controlPanel {
+                box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+            }
+            QScrollArea {
+                border: none;
+            }
+            QLabel {
+                font-size: 13px;
+            }
+            QLineEdit, QSpinBox {
+                border-radius: 14px;
+                border: 1px solid rgba(15, 23, 42, 0.2);
+                padding: 6px 10px;
+                background: #f7fafc;
+            }
+            QPushButton {
+                border-radius: 16px;
+                background-color: #1e88e5;
+                color: white;
+                padding: 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background-color: #1565c0;
+            }
+            QPushButton:disabled {
+                background-color: rgba(30, 136, 229, 0.5);
+            }
+            QCheckBox {
+                spacing: 8px;
+            }
+            """
+        )
 
     # ---------------------------------------------------------------------
     # vCard & QR generation
