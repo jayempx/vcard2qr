@@ -14,13 +14,11 @@ Simple PyQt5 desktop app that collects your contact details, builds a vCard 3.0 
 ## Requirements
 
 - Python 3.8+
-- `PyQt5`
-- `qrcode[pil]`
-- `Pillow`
 
 Install dependencies:
 ```
-pip install PyQt5 qrcode[pil] pillow
+pip install -r requirements.txt
+```
 ```
 
 ## Usage
@@ -30,9 +28,11 @@ pip install PyQt5 qrcode[pil] pillow
    python vcard-2-qr.py
    ```
 2. Fill at least one form field to compose the vCard payload.
-3. Adjust size, radius, and colors. Check “Sfondo trasparente” if you want a transparent background.
+3. Adjust size, radius, and colors. Check “No background” if you want a transparent background.
 4. Click **Generate QR**. The preview updates with the rendered QR.
 5. Use **Copy to clipboard** or **Save as PNG …** to export the image.
+
+You can use the "Batch convert..." button to import a .xlsx database file of multiple contacts and export their qr all at once, keeping valid all the settings above.
 
 ## Notes
 
