@@ -5,16 +5,19 @@ A PyQt5 application that lets you fill out contact information, generate a
 vCard 3.0 payload, and render it as a customizable QR code.
 
 Dependencies (install with pip):
-    pip install PyQt5 qrcode[pil] pillow
+    pip install PyQt5 qrcode[pil] pillow openpyxl
 
 Author: ChatGPT (OpenAI o3)
 Date: 2025‑08‑06
 """
 #!/usr/bin/env python
 
+import re
 import sys
-from typing import List, Tuple
+from pathlib import Path
+from typing import Any, List, Mapping, Sequence, Tuple
 
+from openpyxl import load_workbook
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import (
@@ -38,6 +41,38 @@ from PyQt5.QtWidgets import (
 import qrcode
 from qrcode.constants import ERROR_CORRECT_Q
 from PIL import Image, ImageDraw
+
+FIELD_HEADER_ALIASES = {
+    "firstname": "First Name",
+    "nome": "First Name",
+    "lastname": "Last Name",
+    "cognome": "Last Name",
+    "organization": "Organization",
+    "azienda": "Organization",
+    "company": "Organization",
+    "title": "Title",
+    "email": "Email",
+    "mobile": "Mobile",
+    "cell": "Mobile",
+    "cellphone": "Mobile",
+    "cellulare": "Mobile",
+    "switchboard": "Switchboard",
+    "centralino": "Switchboard",
+    "directoffice": "Direct Office",
+    "directofficephone": "Direct Office",
+    "office": "Direct Office",
+    "address": "Address",
+    "indirizzo": "Address",
+    "linkedin": "LinkedIn",
+}
+
+TELEPHONE_TYPE_MAP = {
+    "Mobile": "CELL",
+    "Switchboard": "WORK",
+    "Direct Office": "WORK;VOICE",
+}
+
+MINIMAL_VCARD = "BEGIN:VCARD\nVERSION:3.0\nEND:VCARD"
 
 
 class VCardQRApp(QWidget):
@@ -132,6 +167,10 @@ class VCardQRApp(QWidget):
         save_btn.clicked.connect(self.save_png)
         ctrl_col.addWidget(save_btn)
 
+        import_btn = QPushButton("Batch generate from Excel …")
+        import_btn.clicked.connect(self.import_from_excel)
+        ctrl_col.addWidget(import_btn)
+
         ctrl_col.addStretch(1)
 
         # QR preview
@@ -169,50 +208,56 @@ class VCardQRApp(QWidget):
         self.bg_btn.setEnabled(not checked)
 
     def apply_material_theme(self) -> None:
-        """Apply Material Design 3-inspired styling to the UI."""
+        """Apply a darker palette inspired by the new color scheme."""
         self.setStyleSheet(
             """
             QWidget {
-                background-color: #f4f6fb;
+                background-color: #1d1f27;
                 font-family: "Segoe UI", "Roboto", sans-serif;
-                color: #1f2933;
+                color: #f4f6fb;
             }
             #formContainer, #controlPanel {
-                background-color: #ffffff;
+                background-color: #232431;
                 border-radius: 18px;
-                border: 1px solid rgba(15, 23, 42, 0.1);
+                border: 1px solid #37353E;
                 padding: 18px;
             }
             #controlPanel {
-                box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+                box-shadow: 0 16px 32px rgba(10, 10, 10, 0.5);
             }
             QScrollArea {
                 border: none;
             }
             QLabel {
                 font-size: 13px;
+                background-color: #37353E;
+                color: #D3DAD9;
+                padding: 4px 8px;
+                border-radius: 8px;
             }
             QLineEdit, QSpinBox {
                 border-radius: 14px;
-                border: 1px solid rgba(15, 23, 42, 0.2);
+                border: 1px solid #44444E;
                 padding: 6px 10px;
-                background: #f7fafc;
+                background: #16171c;
+                color: #f4f6fb;
             }
             QPushButton {
                 border-radius: 16px;
-                background-color: #1e88e5;
+                background-color: #37353E;
                 color: white;
                 padding: 12px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #1565c0;
+                background-color: #715A5A;
             }
             QPushButton:disabled {
-                background-color: rgba(30, 136, 229, 0.5);
+                background-color: rgba(71, 61, 63, 0.5);
             }
             QCheckBox {
                 spacing: 8px;
+                color: #f4f6fb;
             }
             """
         )
@@ -222,49 +267,192 @@ class VCardQRApp(QWidget):
     # ---------------------------------------------------------------------
     def build_vcard(self) -> str:
         """Compose a vCard 3.0 string from the form contents."""
-        lines: List[str] = ["BEGIN:VCARD", "VERSION:3.0"]
+        form_data = {
+            label.replace("\u00a0", " ").strip(): widget.text().strip()
+            for label, widget in self.fields.items()
+        }
+        custom_entries: List[Tuple[str, str]] = []
+        for key_edit, val_edit in self.custom_fields:
+            key = key_edit.text().strip()
+            val = val_edit.text().strip()
+            if key and val:
+                custom_entries.append((key, val))
+        return self._vcard_from_mapping(form_data, custom_entries)
 
-        fn = f"{self.fields['First Name'].text()} {self.fields['Last Name'].text()}".strip()
+    def _vcard_from_mapping(
+        self,
+        data: Mapping[str, str],
+        custom_fields: Sequence[Tuple[str, str]],
+    ) -> str:
+        """Build a vCard payload from a mapping of standard and custom fields."""
+        lines = ["BEGIN:VCARD", "VERSION:3.0"]
+
+        fn = f"{data.get('First Name', '').strip()} {data.get('Last Name', '').strip()}".strip()
         if fn:
             lines.append(f"FN:{fn}")
 
-        if org := self.fields["Organization"].text():
+        if org := data.get("Organization", "").strip():
             lines.append(f"ORG:{org}")
-        if title := self.fields["Title"].text():
+        if title := data.get("Title", "").strip():
             lines.append(f"TITLE:{title}")
 
-        tel_map = {
-            "Mobile": "CELL",
-            "Switchboard": "WORK",
-            "Direct Office": "WORK;VOICE",
-        }
-        for key, vtype in tel_map.items():
-            if num := self.fields[key].text():
+        for key, vtype in TELEPHONE_TYPE_MAP.items():
+            if num := data.get(key, "").strip():
                 lines.append(f"TEL;TYPE={vtype}:{num}")
 
-        if email := self.fields["Email"].text():
+        if email := data.get("Email", "").strip():
             lines.append(f"EMAIL;TYPE=INTERNET:{email}")
 
-        if addr := self.fields["Address"].text():
-            # Basic ADR format: ADR;TYPE=WORK:;;street;city;region;zip;country
+        if addr := data.get("Address", "").strip():
             lines.append(f"ADR;TYPE=WORK:;;{addr};;;;")
 
-        if url := self.fields["LinkedIn"].text():
+        if url := data.get("LinkedIn", "").strip():
             lines.append(f"URL:{url}")
 
-        # Custom data as X‑extensions
-        for key_edit, val_edit in self.custom_fields:
-            key = key_edit.text().strip().upper().replace(" ", "_")
-            val = val_edit.text().strip()
-            if key and val:
-                lines.append(f"X-{key}:{val}")
+        for key, val in custom_fields:
+            label = key.strip().upper().replace(" ", "_")
+            value = val.strip()
+            if label and value:
+                lines.append(f"X-{label}:{value}")
 
         lines.append("END:VCARD")
         return "\n".join(lines)
 
+    @staticmethod
+    def _normalize_header(value: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "", value.strip().lower())
+
+    @staticmethod
+    def _stringify_cell(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        return str(value).strip()
+
+    @staticmethod
+    def _sanitize_filename(value: str) -> str:
+        return re.sub(r"[^A-Za-z0-9_-]+", "_", value).strip("_")
+
+    def import_from_excel(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import contacts from Excel",
+            "",
+            "Excel workbooks (*.xlsx)",
+        )
+        if not path:
+            return
+
+        try:
+            workbook = load_workbook(path, read_only=True, data_only=True)
+        except Exception as exc:
+            QMessageBox.critical(self, "Import failed", f"Unable to read {path}: {exc}")
+            return
+
+        try:
+            sheet = workbook.active
+            rows = list(sheet.iter_rows(values_only=True))
+        finally:
+            workbook.close()
+
+        if len(rows) < 2:
+            QMessageBox.warning(self, "No data", "The workbook must contain at least one contact row.")
+            return
+
+        header = rows[0]
+        standard_columns: dict[int, str] = {}
+        custom_columns: dict[int, str] = {}
+        for idx, raw_header in enumerate(header):
+            if raw_header is None:
+                continue
+            normalized = self._normalize_header(str(raw_header))
+            if normalized and (canonical := FIELD_HEADER_ALIASES.get(normalized)):
+                standard_columns[idx] = canonical
+            else:
+                cleaned = str(raw_header).strip()
+                if cleaned:
+                    custom_columns[idx] = cleaned
+
+        if not standard_columns and not custom_columns:
+            QMessageBox.warning(self, "Invalid header", "The spreadsheet header does not contain recognizable field names.")
+            return
+
+        out_dir = QFileDialog.getExistingDirectory(
+            self,
+            "Select output folder",
+            str(Path(path).parent),
+        )
+        if not out_dir:
+            return
+        out_dir_path = Path(out_dir)
+
+        saved = 0
+        skipped = 0
+        for row_idx, row in enumerate(rows[1:], start=2):
+            row_data = {
+                field: self._stringify_cell(row[idx]) if idx < len(row) else ""
+                for idx, field in standard_columns.items()
+            }
+            row_custom: List[Tuple[str, str]] = []
+            for idx, header_name in custom_columns.items():
+                if idx < len(row):
+                    value = self._stringify_cell(row[idx])
+                    if value:
+                        row_custom.append((header_name, value))
+
+            vcard = self._vcard_from_mapping(row_data, row_custom)
+            if vcard == MINIMAL_VCARD:
+                skipped += 1
+                continue
+
+            qr = qrcode.QRCode(
+                version=None,
+                error_correction=ERROR_CORRECT_Q,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(vcard)
+            qr.make(fit=True)
+
+            img = self.render_rounded(
+                qr,
+                self.size_spin.value(),
+                self.radius_spin.value(),
+                self.transparent_bg,
+            )
+            self.current_qr = img
+
+            base_value = f"{row_data.get('First Name', '')} {row_data.get('Last Name', '')}".strip()
+            safe_base = self._sanitize_filename(base_value) or f"contact_{row_idx - 1}"
+            target_path = out_dir_path / f"{safe_base}_{row_idx - 1}.png"
+            try:
+                img.save(target_path)
+            except Exception as exc:
+                QMessageBox.warning(
+                    self,
+                    "Save failed",
+                    f"Could not write {target_path.name}: {exc}",
+                )
+                continue
+
+            saved += 1
+
+        if saved:
+            summary = f"Saved {saved} QR code{'s' if saved != 1 else ''} to {out_dir_path}"
+            if skipped:
+                summary += f" (skipped {skipped} empty row{'s' if skipped != 1 else ''})"
+            QMessageBox.information(self, "Import complete", summary)
+        else:
+            QMessageBox.warning(
+                self,
+                "No QR codes",
+                "The imported rows did not contain enough data to build any QR codes.",
+            )
+
     def generate_qr(self) -> None:
         vcard = self.build_vcard()
-        if not vcard or vcard == "BEGIN:VCARD\nVERSION:3.0\nEND:VCARD":
+        if vcard == MINIMAL_VCARD:
             QMessageBox.warning(self, "Incomplete", "Add at least one field first.")
             return
 
