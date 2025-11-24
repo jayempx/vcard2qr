@@ -167,7 +167,7 @@ class VCardQRApp(QWidget):
         save_btn.clicked.connect(self.save_png)
         ctrl_col.addWidget(save_btn)
 
-        import_btn = QPushButton("Import from Excel …")
+        import_btn = QPushButton("Batch generate from Excel …")
         import_btn.clicked.connect(self.import_from_excel)
         ctrl_col.addWidget(import_btn)
 
@@ -208,50 +208,56 @@ class VCardQRApp(QWidget):
         self.bg_btn.setEnabled(not checked)
 
     def apply_material_theme(self) -> None:
-        """Apply Material Design 3-inspired styling to the UI."""
+        """Apply a darker palette inspired by the new color scheme."""
         self.setStyleSheet(
             """
             QWidget {
-                background-color: #f4f6fb;
+                background-color: #1d1f27;
                 font-family: "Segoe UI", "Roboto", sans-serif;
-                color: #1f2933;
+                color: #f4f6fb;
             }
             #formContainer, #controlPanel {
-                background-color: #ffffff;
+                background-color: #232431;
                 border-radius: 18px;
-                border: 1px solid rgba(15, 23, 42, 0.1);
+                border: 1px solid #37353E;
                 padding: 18px;
             }
             #controlPanel {
-                box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+                box-shadow: 0 16px 32px rgba(10, 10, 10, 0.5);
             }
             QScrollArea {
                 border: none;
             }
             QLabel {
                 font-size: 13px;
+                background-color: #37353E;
+                color: #D3DAD9;
+                padding: 4px 8px;
+                border-radius: 8px;
             }
             QLineEdit, QSpinBox {
                 border-radius: 14px;
-                border: 1px solid rgba(15, 23, 42, 0.2);
+                border: 1px solid #44444E;
                 padding: 6px 10px;
-                background: #f7fafc;
+                background: #16171c;
+                color: #f4f6fb;
             }
             QPushButton {
                 border-radius: 16px;
-                background-color: #1e88e5;
+                background-color: #37353E;
                 color: white;
                 padding: 12px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background-color: #1565c0;
+                background-color: #715A5A;
             }
             QPushButton:disabled {
-                background-color: rgba(30, 136, 229, 0.5);
+                background-color: rgba(71, 61, 63, 0.5);
             }
             QCheckBox {
                 spacing: 8px;
+                color: #f4f6fb;
             }
             """
         )
