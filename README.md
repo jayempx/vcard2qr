@@ -10,6 +10,7 @@ Simple PyQt5 desktop app that collects your contact details, builds a vCard 3.0 
 - Pick foreground / background colors and toggle a transparent background for the output image.
 - Adjust QR size and corner radius before generation.
 - Preview the generated code in the UI, copy it to the clipboard, or save it as PNG.
+- Import multiple contacts from an Excel workbook and export the matching QR codes in one go.
 
 ## Requirements
 
@@ -17,10 +18,11 @@ Simple PyQt5 desktop app that collects your contact details, builds a vCard 3.0 
 - `PyQt5`
 - `qrcode[pil]`
 - `Pillow`
+- `openpyxl`
 
 Install dependencies:
 ```
-pip install PyQt5 qrcode[pil] pillow
+pip install PyQt5 qrcode[pil] pillow openpyxl
 ```
 
 ## Usage
@@ -33,6 +35,7 @@ pip install PyQt5 qrcode[pil] pillow
 3. Adjust size, radius, and colors. Check “Sfondo trasparente” if you want a transparent background.
 4. Click **Generate QR**. The preview updates with the rendered QR.
 5. Use **Copy to clipboard** or **Save as PNG …** to export the image.
+6. Choose **Import from Excel …** to load a workbook and emit PNGs for every contact using the current color/size settings.
 
 ## Notes
 
