@@ -20,7 +20,6 @@ Install dependencies:
 ```
 pip install -r requirements.txt
 ```
-```
 
 ## Usage
 
@@ -32,7 +31,7 @@ pip install -r requirements.txt
 3. Adjust size, radius, and colors. Check “No background” if you want a transparent background.
 4. Click **Generate QR**. The preview updates with the rendered QR.
 5. Use **Copy to clipboard** or **Save as PNG …** to export the image.
-6. Choose **Import from Excel …** to load a workbook and emit PNGs for every contact using the current color/size settings.
+6. Choose **Batch convert …** to load a workbook and emit PNGs for every contact using the current color/size settings.
 
 You can use the "Batch convert..." button to import a .xlsx database file of multiple contacts and export their qr all at once, keeping valid all the settings above.
 
