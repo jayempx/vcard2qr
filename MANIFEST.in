@@ -1,0 +1,8 @@
+# Include runnable tests and referenced documentation in source distributions.
+include README.md CHANGELOG.md THIRD_PARTY_NOTICES.md
+include requirements.txt requirements.lock requirements-dev.lock
+include vcard-2-qr.py sample_contacts.xlsx
+recursive-include docs *.md *.webp
+recursive-include scripts *.py *.ps1
+recursive-include tests *.py
+recursive-include .github *.yml

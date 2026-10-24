@@ -1,4 +1,2 @@
-PyQt5
-qrcode[pil]
-Pillow
-openpyxl
+# Install the app and the exact direct dependencies declared in pyproject.toml.
+.
